@@ -1,0 +1,29 @@
+precision mediump float;
+
+attribute vec3 vertPos;
+attribute vec3 v_Normal;
+attribute vec2 vertTexCoord;
+
+varying vec3 fragColor;
+varying vec3 Position;
+varying vec3 Normal;
+varying vec2 texCoord;
+varying float distanceToCam;
+
+uniform mat4 worldMat;
+uniform mat4 viewMat;
+uniform mat4 projectionMat;
+uniform mat3 normalMat;
+
+uniform vec3 reflectionVec;
+varying vec3 fragReflectionVec;
+
+void main() {
+    fragReflectionVec = reflectionVec;
+    texCoord = vertTexCoord;
+
+    Normal = normalize(normalMat * v_Normal);
+    Position = vec3(viewMat * worldMat * vec4(vertPos, 1.0)); 
+    distanceToCam = sqrt(Position.x*Position.x + Position.y*Position.y + Position.z*Position.z);
+    gl_Position = projectionMat * viewMat * worldMat * vec4(vertPos, 1.0);
+}

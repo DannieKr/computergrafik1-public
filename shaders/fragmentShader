@@ -1,0 +1,84 @@
+precision mediump float;
+varying vec3 Position;
+varying vec3 Normal;
+varying vec2 texCoord;
+varying float distanceToCam; 
+
+uniform vec4 lightPosition;
+uniform vec4 lightAmbient;
+uniform vec4 lightDiffuse;
+uniform vec4 lightSpecular;
+uniform vec3 lightHalfVector;
+
+uniform vec4 materialEmission;
+uniform vec4 materialAmbient;
+uniform vec4 materialDiffuse;
+uniform vec4 materialSpecular;
+uniform float materialShininess;
+uniform sampler2D baseColorTexture;
+
+varying vec3 fragReflectionVec;
+uniform int reflectsSkybox;
+uniform samplerCube skyTexture;
+
+uniform int useToonshader;
+
+uniform float fogNear;
+uniform float fogFar;
+uniform vec4 fogColor;
+	
+void main()
+{
+	vec4 baseColor = texture2D(baseColorTexture, texCoord);
+
+	vec3 N = normalize(Normal);
+
+	if (reflectsSkybox != 1) {
+
+		vec4 ambient = materialAmbient * lightAmbient;
+
+		vec3 L = vec3(0.0);
+		vec3 H = vec3(0.0);
+
+		if (lightPosition.w == 0.0) {
+			L = normalize(vec3(lightPosition));
+			H = normalize(lightHalfVector);
+		} else {
+			L = normalize(vec3(lightPosition) - Position);
+			vec4 Pos_eye = vec4(0.0, 0.0, 1.0, 0.0);
+			vec3 A = Pos_eye.xyz;
+			H = normalize(L + A);
+		}
+
+		vec4 diffuse = vec4(0.0, 0.0, 0.0, 1.0);
+		vec4 specular = vec4(0.0, 0.0, 0.0, 1.0);
+		float diffuseLight = max(dot(N, L), 0.0);
+		if (diffuseLight > 0.0) {
+			diffuse = diffuseLight * materialDiffuse * lightDiffuse;
+			float specLight = pow(max(dot(H, N), 0.0), materialShininess);
+			specular = specLight * materialSpecular * lightSpecular;
+		}
+
+		vec4 color = baseColor * (materialEmission + ambient + diffuse + specular);
+		float fogFactor = clamp((fogFar - distanceToCam) / (fogFar - fogNear), 0.0, 1.0);
+		gl_FragColor = mix(fogColor, color, fogFactor);
+
+		// toon shader
+		if (useToonshader == 1) {
+			float numOfSteps = 7.0;
+			float step = sqrt(diffuseLight) * numOfSteps;
+			step = (floor(step) + smoothstep(0.43, 0.57, fract(step))) / numOfSteps;
+			float surfaceColor = step * step;
+			gl_FragColor = vec4(vec3(surfaceColor), 1.0) * baseColor;
+		}
+	} else {
+		float skalar = dot(fragReflectionVec, N);
+        if (skalar < 0.0) {
+            skalar = skalar * -1.0;
+        }
+        vec3 texCoords = N * skalar;
+        gl_FragColor = textureCube(skyTexture, texCoords);	
+	}
+
+
+}
